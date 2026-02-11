@@ -7,6 +7,9 @@
 *.dll
 *.so
 *.dylib
+yanzi-emitter
+bin/
+dist/
 
 # Test binary, built with `go test -c`
 *.test
@@ -16,6 +19,7 @@
 coverage.*
 *.coverprofile
 profile.cov
+*.cache
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
