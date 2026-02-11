@@ -8,6 +8,8 @@
 *.so
 *.dylib
 yanzi-emitter
+yanzi-emitter_*
+yanzi-emitter-*
 bin/
 dist/
 
