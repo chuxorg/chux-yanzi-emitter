@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/chuxorg/chux-yanzi-emitter/internal/client"
 )
@@ -32,7 +33,11 @@ func main() {
 }
 
 func run() error {
-	input, err := io.ReadAll(os.Stdin)
+	return runWithDeps(os.Stdin, os.Stdout, client.DefaultEndpoint, client.PostIntent)
+}
+
+func runWithDeps(inputReader io.Reader, outputWriter io.Writer, endpoint string, postIntent func(context.Context, string, client.IntentRequest) (client.IntentResponse, error)) error {
+	input, err := io.ReadAll(inputReader)
 	if err != nil {
 		return fmt.Errorf("read stdin: %w", err)
 	}
@@ -59,12 +64,12 @@ func run() error {
 		PrevHash:   payload.PrevHash,
 	}
 
-	resp, err := client.PostIntent(context.Background(), client.DefaultEndpoint, req)
+	resp, err := postIntent(context.Background(), endpoint, req)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("%s %s\n", resp.ID, resp.Hash)
+	fmt.Fprintf(outputWriter, "%s %s\n", resp.ID, resp.Hash)
 	return nil
 }
 
@@ -75,11 +80,36 @@ func validate(payload inputPayload) error {
 	if payload.SourceType == "" {
 		return fmt.Errorf("source_type: %w", errInvalidInput)
 	}
-	if payload.Prompt == "" {
+	if payload.Prompt == "" && !isProjectArtifact(payload.Meta) {
 		return fmt.Errorf("prompt: %w", errInvalidInput)
 	}
-	if payload.Response == "" {
+	if payload.Response == "" && !isProjectArtifact(payload.Meta) {
 		return fmt.Errorf("response: %w", errInvalidInput)
 	}
 	return nil
+}
+
+func isProjectArtifact(meta json.RawMessage) bool {
+	if len(meta) == 0 {
+		return false
+	}
+
+	var payload struct {
+		ArtifactType      string `json:"artifact_type"`
+		ArtifactTypeCamel string `json:"artifactType"`
+		Artifact          struct {
+			Type string `json:"type"`
+		} `json:"artifact"`
+	}
+	if err := json.Unmarshal(meta, &payload); err != nil {
+		return false
+	}
+
+	if strings.EqualFold(payload.ArtifactType, "project") {
+		return true
+	}
+	if strings.EqualFold(payload.ArtifactTypeCamel, "project") {
+		return true
+	}
+	return strings.EqualFold(payload.Artifact.Type, "project")
 }
