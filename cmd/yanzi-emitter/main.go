@@ -33,7 +33,11 @@ func main() {
 }
 
 func run() error {
-	input, err := io.ReadAll(os.Stdin)
+	return runWithDeps(os.Stdin, os.Stdout, client.DefaultEndpoint, client.PostIntent)
+}
+
+func runWithDeps(inputReader io.Reader, outputWriter io.Writer, endpoint string, postIntent func(context.Context, string, client.IntentRequest) (client.IntentResponse, error)) error {
+	input, err := io.ReadAll(inputReader)
 	if err != nil {
 		return fmt.Errorf("read stdin: %w", err)
 	}
@@ -60,12 +64,12 @@ func run() error {
 		PrevHash:   payload.PrevHash,
 	}
 
-	resp, err := client.PostIntent(context.Background(), client.DefaultEndpoint, req)
+	resp, err := postIntent(context.Background(), endpoint, req)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("%s %s\n", resp.ID, resp.Hash)
+	fmt.Fprintf(outputWriter, "%s %s\n", resp.ID, resp.Hash)
 	return nil
 }
 
